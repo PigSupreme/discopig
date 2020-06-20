@@ -5,6 +5,10 @@ Hey, my kid brother tried to write a docstring
 before bedtime...it didn't end well.
 """
 import random
+from enum import Enum
+
+GAMESTATE = Enum('STATE', 'INIT ACTIVE OVER')
+PLAYER = Enum('PLAYER', 'OTHER PRINCESS')
 
 THE_CHARS = {
     'Holmes': 'RED',
@@ -29,13 +33,28 @@ class PrincessGame(object):
     def __init__(self, owner=None):
         self.chars = dict(THE_CHARS)
         self.__charlotte = None
-        self.player = {'princess': None, 'other': None}
+        self.player = {x: None for x in PLAYER}
         self.turndeck = []
         self.cluedeck = []
+        self.current = None
+        self.state = GAMESTATE.INIT
 
-    def set_players(self, princess, other):
-        self.player['princess'] = princess
-        self.player['other'] = other
+    @property
+    def princess(self):
+        return self.__charlotte
+
+    def add_player(self, *, princess=None, other=None):
+        """TODO: What are we using this for?"""
+        if princess:
+            self.player[PLAYER.PRINCESS] = princess
+        if other:
+            self.player[PLAYER.OTHER] = other
+
+    def remove_player(self, *args):
+        """TODO: This works with to add_player above."""
+        for pl in args:
+            if isinstance(pl, PLAYER):
+                self.player[pl] = None
 
     def reset(self):
         """Resets the game to its original state."""
@@ -45,12 +64,16 @@ class PrincessGame(object):
 
         self.cluedeck = list(self.chars.keys())
         random.shuffle(self.cluedeck)
+
+        self.state = GAMESTATE.INIT
+        self.__charlotte = None
+        self.turn = 0
+
+    def start_game(self):
+        """Choose the princess and prepare for turn 1."""
         self.__charlotte = self.cluedeck.pop()
-
+        self.current = PLAYER.OTHER
         self.turn = 1
-
-        return self.__charlotte
-
 
     def start_turn(self):
         """Returns a list of four characters available this turn."""
@@ -61,6 +84,8 @@ class PrincessGame(object):
         this_turn = self.turndeck[:4]
         self.turndeck = self.turndeck[4:]
 
+        # TODO: Instead of returning this, set some attributes...
+        # ...that can be retreived later.
         return this_turn
 
     def get_clue(self):
@@ -72,10 +97,13 @@ class PrincessGame(object):
         return clue
 
     def end_turn(self):
-        """Ends the turn."""
+        """Ends the turn and checks for game over."""
         self.turn += 1
         if self.turn > MAX_TURNS:
             raise GameOver('princess', self.__charlotte)
+        # Switch players for next turn
+        pval = self.current.value  # Will be 1 or 2
+        self.current = PLAYER(3 - pval)
 
     def unmask_princess(self, char):
         """Unmask the princess (will end the game)."""
