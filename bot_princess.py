@@ -13,7 +13,7 @@ from discord.ext import commands
 from dotenv import load_dotenv
 from discord.utils import sleep_until
 
-from princess import PrincessGame, PLAYER, GameOver
+from oldprincess import PrincessGame, PLAYER, GameOver
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
