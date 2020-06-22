@@ -3,14 +3,15 @@
 Base Game Operations.
 """
 import random
-from .model import GAMESTATE, GameOver
+from .model import GameOver
+from princess import GAMESTATE
 
 class GameOperations(object):
 
     def __init__(self):
         pass
 
-    def reset(self):
+    def reset_game(self):
         """
         Reset the game to its original state.
 

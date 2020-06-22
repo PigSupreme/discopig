@@ -3,7 +3,8 @@
 Base Game Events.
 """
 import random
-from .model import GAMESTATE, PLAYER, GameOver, GameError
+from .model import GameOver, GameError
+from princess import GAMESTATE, PLAYER
 
 class GameEvents(object):
 
@@ -42,29 +43,24 @@ class GameEvents(object):
         """
         Choose a current character and do their action.
 
-        1. Check that game is active abd char is available.
+        1. Check that game is active and char is available.
         2. Simulated action (placeholder for later).
         3. Switch current player if needed.
-        4. Check for end of turn.
         """
         # 1 #
         if self.state != GAMESTATE.ACTIVE:
             raise GameError('Game is inactive!')
             return
         if char not in self.available_chars:
-            raise GameError(f'Character{char} is not available.')
+            raise GameError(f'Character {char} is not available.')
             return
         # 2 #
         self.available_chars.remove(char)
         chars_left = len(self.available_chars)
-        print(f'Action for {char} goes here...')
         # 3 #
         # Switch when 3 or 1 characters are left
         if chars_left % 2 == 1:
             self.current = self.other(self.current)
-        # 4 #
-        if chars_left == 0:
-            self.end_turn()
 
     def end_turn(self):
         """Ends the turn and checks for game over."""

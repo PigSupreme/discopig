@@ -1,5 +1,9 @@
 # princess/__init__.py
 
+from enum import Enum
+PLAYER = Enum('PLAYER', 'OTHER PRINCESS', module=__name__)
+GAMESTATE = Enum('STATE', 'INIT ACTIVE OVER', module=__name__)
+
 from .model import GameModel
 from .operations import GameOperations
 from .view import GameView

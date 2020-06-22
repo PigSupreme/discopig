@@ -2,10 +2,12 @@
 """
 Base Game Model.
 """
-from enum import Enum
+from princess import PLAYER, GAMESTATE
 
-GAMESTATE = Enum('STATE', 'INIT ACTIVE OVER')
-PLAYER = Enum('PLAYER', 'OTHER PRINCESS')
+PLAYER_STR = {
+    PLAYER.PRINCESS: "Princess",
+    PLAYER.OTHER: "Un-Princess"
+    }
 
 THE_CHARS = {
     'Holmes': 'RED',
@@ -42,9 +44,13 @@ class GameOver(GameError):
 class GameModel(object):
 
     def __init__(self, owner=None):
+        # Directory of all characters in the game
         self.chars = dict(THE_CHARS)
+        # Which character is the princess?
         self.__charlotte = None
-        self.player = {x: None for x in PLAYER} # Unused?
+        # TODO: For display until we redo Enum(PLAYER)
+        self.player = PLAYER_STR
+        # TODO: Finish documenting!
         self.turndeck = []
         self.cluedeck = []
         self.available_chars = []
