@@ -4,22 +4,19 @@
 Work in progress...write a real docstring here.
 """
 
-import os
+import pathlib
+
 from datetime import datetime, timedelta, timezone
 
 import discord
 from discord.ext import commands
 from discord.ext.commands import CommandError
-from dotenv import load_dotenv
 from discord.utils import sleep_until
+
+from omegaconf import OmegaConf
 
 import princess
 
-CMD_PREFIX = '!'
-CATEGORY = 'PRINCESS'
-LOBBY = 'gamelobby'
-PLAYER_ROLE = 'GamePlayer'
-MAX_GAMES = 10
 
 class GameInfo(object):
     """Helper class for storing game/player information"""
@@ -55,23 +52,24 @@ class PrincessCog(commands.Cog):
 # TODO: Replace print with logging...
 # ...could log to a Discord channel!
 
-    def __init__(self, bot):
+    def __init__(self, bot, conf):
         super().__init__()
         # The Bot we're attached to and its User
         self.bot = bot
         self.user = None
         self.uname = None
+        # Configuration parameters
+        self.conf = conf
         # Channel Category for Discord
-        self.gamecat = CATEGORY
-        # Name for the lobby channel
-        self.lobbyname = LOBBY
+        self.gamecat = None
+        # Lobby channel on Discord
+        self.lobbyname = None
         # Our Discord Guild
-        self.guildname = os.getenv('DISCORD_GUILD')
         self.guild = None
         # Discord role for players; used for Command checks
         self.prole = None
         # Information about current games
-        self.info = {f'{(n+1):02}': GameInfo() for n in range(MAX_GAMES)}
+        self.info = {f'{(n+1):02}': GameInfo() for n in range(conf.MAX_GAMES)}
 
     def game_info(self, ctx):
         """Convenience function for internal use only."""
@@ -92,23 +90,23 @@ class PrincessCog(commands.Cog):
         print(f'{self.uname} has connected to Discord!')
 
         # Find our guild
-        guild = discord.utils.find(lambda g: g.name == GUILD, bot.guilds)
+        guild = discord.utils.find(lambda g: g.name == self.conf.DISCORD_GUILD, bot.guilds)
         self.guild = guild
         print(f'Now on guild {guild}')
 
         # Check for a category on this guild; set it up if needed
-        cat = discord.utils.find(lambda c: c.name == CATEGORY, guild.categories)
+        cat = discord.utils.find(lambda c: c.name == self.conf.CATEGORY, guild.categories)
         if cat is None:
-            self.gamecat = await guild.create_category(CATEGORY)
+            self.gamecat = await guild.create_category(self.conf.CATEGORY)
             print(f'Created category {self.gamecat} for later use.')
         else:
             self.gamecat = cat
             print(f'Using existing category {self.gamecat}.')
 
         # Check for a lobby-type channel within the category; set up if needed
-        lobby = discord.utils.find(lambda c: c.name == LOBBY, self.gamecat.channels)
+        lobby = discord.utils.find(lambda c: c.name == self.conf.LOBBY, self.gamecat.channels)
         if lobby is None:
-            self.lobby = await self.gamecat.create_text_channel(name=LOBBY)
+            self.lobby = await self.gamecat.create_text_channel(name=self.conf.LOBBY)
             print(f'Set up {self.lobby} within {self.gamecat}')
         else:
             self.lobby = lobby
@@ -116,13 +114,15 @@ class PrincessCog(commands.Cog):
 
         await self.lobby.send(f'{self.uname} is now lurking in #{self.lobby}!')
         await self.lobby.send('Use !create to make a game. Use !help for general help.')
+
         # Set up player role...
-        role = discord.utils.find(lambda r: r.name == PLAYER_ROLE, guild.roles)
+        rolename = self.conf.PLAYER_ROLE
+        role = discord.utils.find(lambda r: r.name == rolename, guild.roles)
         if role:
-            print(f'Using existing role: {PLAYER_ROLE}')
+            print(f'Using existing role: {rolename}')
         else:
-            role = await guild.create_role(name='GamePlayer')
-            print(f'Created new role: {PLAYER_ROLE}')
+            role = await guild.create_role(name=rolename)
+            print(f'Created new role: {rolename}')
         self.prole = role
 
         print(f'{self.uname} is ready to go!')
@@ -185,7 +185,7 @@ class PrincessCog(commands.Cog):
 
     @commands.command(name='reset')
     @commands.check(is_active_player)
-    @commands.has_role(PLAYER_ROLE)
+#    @commands.has_role(PLAYER_ROLE)
     async def do_reset(self, ctx):
         """Reset an existing game."""
         info = self.game_info(ctx)
@@ -249,7 +249,7 @@ class PrincessCog(commands.Cog):
     @commands.command(name='turn')
     @commands.check(is_active_player)
     @commands.check(has_active_game)
-    @commands.has_role(PLAYER_ROLE)
+#    @commands.has_role(PLAYER_ROLE)
     async def do_turn(self, ctx):
         """Start the next turn."""
         game = self.game_info(ctx).game
@@ -264,7 +264,7 @@ class PrincessCog(commands.Cog):
     @commands.command(name='choose')
     @commands.check(is_active_player)
     @commands.check(has_active_game)
-    @commands.has_role(PLAYER_ROLE)
+#    @commands.has_role(PLAYER_ROLE)
     async def do_choose(self, ctx, char):
         """Choose a character and simulate action."""
         game = self.game_info(ctx).game
@@ -285,7 +285,7 @@ class PrincessCog(commands.Cog):
     @commands.command(name='clue')
     @commands.check(is_active_player)
     @commands.check(has_active_game)
-    @commands.has_role(PLAYER_ROLE)
+#    @commands.has_role(PLAYER_ROLE)
     async def do_clue(self, ctx):
         """Get a clue (by private DM)."""
         game = self.game_info(ctx).game
@@ -301,7 +301,7 @@ class PrincessCog(commands.Cog):
     @commands.command(name='unmask')
     @commands.check(is_active_player)
     @commands.check(has_active_game)
-    @commands.has_role(PLAYER_ROLE)
+#    @commands.has_role(PLAYER_ROLE)
     async def do_unmask(self, ctx, character):
         """Check if the given character is the princess (ends game)."""
         game = self.game_info(ctx).game
@@ -318,10 +318,11 @@ class PrincessCog(commands.Cog):
             await ctx.send(f'Charlotte was {endgame.princess}!')
 
 if __name__ == "__main__":
-    load_dotenv()
-    TOKEN = os.getenv('DISCORD_TOKEN')
-    GUILD = os.getenv('DISCORD_GUILD')
-    the_bot = commands.Bot(CMD_PREFIX)
-    the_bot.add_cog(PrincessCog(the_bot))
+    config_file = pathlib.Path(__file__).parent.absolute() / 'config.yaml'
+    conf = OmegaConf.load(str(config_file))
+    TOKEN = conf.discopig.DISCORD_TOKEN
+    GUILD = conf.discopig.DISCORD_GUILD
+    the_bot = commands.Bot(conf.discopig.CMD_PREFIX)
+    the_bot.add_cog(PrincessCog(the_bot, conf.discopig))
     the_bot.run(TOKEN)
     print('Shutdown complete!')
