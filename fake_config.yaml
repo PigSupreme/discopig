@@ -2,7 +2,6 @@
 discopig:
   DISCORD_GUILD: [NameOfGuildGoesHere]
   DISCORD_TOKEN: [BotTokenGoesHere]
-
   CMD_PREFIX: '!'
   CATEGORY: PROOFING_DRAWER
   LOBBY: duckpunch
