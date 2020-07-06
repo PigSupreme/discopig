@@ -74,6 +74,7 @@ nbconvert                 5.6.1                    py38_0
 nbformat                  5.0.6                      py_0  
 ncurses                   6.2                  he6710b0_1  
 numpydoc                  0.9.2                      py_0  
+omegaconf                 2.0.0                    pypi_0    pypi
 openssl                   1.1.1g               h7b6447c_0  
 packaging                 20.3                       py_0  
 pandoc                    2.2.3.2                       0  
@@ -139,6 +140,7 @@ tk                        8.6.8                hbc83047_0
 toml                      0.10.0                     py_0  
 tornado                   6.0.4            py38h7b6447c_1  
 traitlets                 4.3.3                    py38_0  
+typing-extensions         3.7.4.2                  pypi_0    pypi
 ujson                     1.35             py38h7b6447c_0  
 urllib3                   1.25.8                   py38_0  
 watchdog                  0.10.2                   py38_0  
