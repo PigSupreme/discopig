@@ -92,7 +92,8 @@ class GitHubUpdate(commands.Cog):
                     await ctx.send(f'* Update failed:\n{sp.stdout}\n{sp.stderr}')
                 else:
                     await ctx.send(f'* Update succeeded:\n {sp.stdout}')
-                    self.bot.reload_extension('ghupdate')
+                    print([c.name for c in self.bot.commands])
+                    await ctx.invoke(self.bot.get_command('load_ext'), 'ghupdate')
 
     @commands.command(name="shasha", help="Show most recent remote/local commits.")
     async def show_latest_shas(self, ctx):
@@ -100,5 +101,6 @@ class GitHubUpdate(commands.Cog):
 
 
 def setup(bot):
+    print('loading...')
     the_cog = GitHubUpdate(bot)
     bot.add_cog(the_cog)
