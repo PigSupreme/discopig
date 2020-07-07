@@ -40,8 +40,11 @@ class GitHubUpdate(commands.Cog):
             self.bot.remove.command('post_init')
 
     def is_from_webhook(self, msg):
-        return msg.webhook_id == self.hook.id and msg.author.name == 'GitHub'
-
+        try:
+            return msg.webhook_id == self.hook.id and msg.author.name == 'GitHub'
+        except AttributeError:
+            print(msg.content)
+            
     @commands.Cog.listener()
     async def on_message(self, msg):
         if self.is_from_webhook(msg):
@@ -76,7 +79,7 @@ class GitHubUpdate(commands.Cog):
             await ctx.invoke(self.get_latest_sha)
         else:
             print('Running w/out context.')
-            await self.get_latest_sha()
+            await self.get_latest_sha(None)
             ctx = self.hook_chan
 
         if self.mysha.startswith(self.remsha):
