@@ -44,6 +44,7 @@ class GitHubUpdate(commands.Cog):
 
     @commands.command(name="gupdate")
     async def do_git_update(self, ctx):
+        await ctx.send(f'Checking {self.mysha} versus remote {self.remsha}...')
         if not self.remsha.startswith(self.mysha):
             sp = subprocess.run(['git', 'pull'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             await ctx.send(f'Updated:\n{sp.stdout}\n{sp.stderr}')
