@@ -19,6 +19,18 @@ class GitHubUpdate(commands.Cog):
         self.remsha = None
         self.mysha= None
 
+    def is_from_webhook(self, msg):
+        # Todo: Return the embed to avoid duplicate code?
+        return msg.webhook_id == self.hook.id and msg.author.name == 'GitHub'
+
+    @commands.Cog.listener()
+    async def on_message(self, msg):
+        if self.is_from_webhook(msg):
+            await self.hook_chan.send('Rawr webhook!')
+            async with self.hook_chan.typing():
+                sp = subprocess.run(['git', 'pull', '--ff-only'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8')
+                await self.hook_chan.send(f'Updated:\n{sp.stdout}\n{sp.stderr}')
+
     @commands.command(name="findsha")
     async def get_latest_sha(self, ctx):
         # Use the webhook to find its channel
@@ -31,7 +43,7 @@ class GitHubUpdate(commands.Cog):
 
         # Find the last message posted by the webhook from GitHub
         async for msg in self.hook_chan.history():
-            if msg.webhook_id == self.hook.id and msg.author.name == 'GitHub':
+            if self.is_from_webhook(msg):
                 emb = msg.embeds[0]
                 # If on the right branch, grab the short SHA for this commit
                 if emb.title.startswith(f'[{conf.BRANCH}]'):
@@ -47,7 +59,7 @@ class GitHubUpdate(commands.Cog):
     async def do_git_update(self, ctx):
         await ctx.send(f'Checking {self.mysha} versus remote {self.remsha}...')
         if self.mysha.startswith(self.remsha):
-            ctx.send(f'No update needed.')
+            await ctx.send(f'No update needed.')
         else:
             async with ctx.typing():
                 sp = subprocess.run(['git', 'pull', '--ff-only'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8')
