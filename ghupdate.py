@@ -87,7 +87,7 @@ class GitHubUpdate(commands.Cog):
                     await ctx.send(f'* Update failed:\n{sp.stdout}\n{sp.stderr}')
                 else:
                     await ctx.send(f'* Update succeeded:\n {sp.stdout}')
-                    self.bot.reload_extension(self)
+                    self.bot.reload_extension('ghupdate')
 
     @commands.command(name="shasha", help="Show most recent remote/local commits.")
     async def show_latest_shas(self, ctx):
