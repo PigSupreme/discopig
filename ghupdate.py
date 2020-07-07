@@ -29,7 +29,7 @@ class GitHubUpdate(commands.Cog):
                 self.hook = wh
                 break
         self.hook_chan = wh.channel
-        
+
         # Immediately check for updates
         await ctx.send('Auto-checking for repository updates...')
         await ctx.invoke(self.do_git_update)
@@ -64,12 +64,12 @@ class GitHubUpdate(commands.Cog):
         # Grab the SHA for most recent local commit (strip enclosing quotes)
         sp = subprocess.run(['git', 'show', '--pretty=format:"%H"', '--no-notes', '--no-patch'], stdout=subprocess.PIPE, encoding='utf-8')
         self.mysha = sp.stdout[1:-1]
-        
+
         # If invoked as a command, report the results
         if ctx:
             await ctx.invoke(self.show_latest_shas)
 
-    @commands.command(name="gupdate")
+    @commands.command(name="gupdate", help="Manually check for updates.")
     @commands.is_owner()
     async def do_git_update(self, ctx=None):
         if ctx:
@@ -77,7 +77,7 @@ class GitHubUpdate(commands.Cog):
         else:
             await self.get_latest_sha()
             ctx = self.hook_chan
-            
+
         if self.mysha.startswith(self.remsha):
             await ctx.send(f'No update needed.')
         else:
