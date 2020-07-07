@@ -37,6 +37,7 @@ class GitHubUpdate(commands.Cog):
             await ctx.invoke(self.do_git_update)
         else:
             await self.hook_chan.send('Dynamic reload successful!')
+            self.bot.remove.command('post_init')
 
     def is_from_webhook(self, msg):
         return msg.webhook_id == self.hook.id and msg.author.name == 'GitHub'
@@ -71,8 +72,10 @@ class GitHubUpdate(commands.Cog):
     @commands.is_owner()
     async def do_git_update(self, ctx=None):
         if ctx:
+            await ctx.send('Running w/ context.')
             await ctx.invoke(self.get_latest_sha)
         else:
+            print('Running w/out context.')
             await self.get_latest_sha()
             ctx = self.hook_chan
 
