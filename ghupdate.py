@@ -39,16 +39,19 @@ class GitHubUpdate(commands.Cog):
                     self.remsha = remsha[1:-1]
                     break
 
-        # Grab the SHA for most recent local commit:
-        sp = subprocess.run(['git', 'show', '--pretty=format:"%H"', '--no-notes', '--no-patch'], stdout=subprocess.PIPE)
-        self.mysha = sp.stdout.decode('utf-8')[1:-2]
+        # Grab the SHA for most recent local commit (strip enclosing quotes)
+        sp = subprocess.run(['git', 'show', '--pretty=format:"%H"', '--no-notes', '--no-patch'], stdout=subprocess.PIPE, encoding='utf-8')
+        self.mysha = sp.stdout[1:-1]
 
     @commands.command(name="gupdate")
     async def do_git_update(self, ctx):
         await ctx.send(f'Checking {self.mysha} versus remote {self.remsha}...')
-        if not self.mysha.startswith(self.remsha):
-            sp = subprocess.run(['git', 'pull', '--ff-only'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            await ctx.send(f'Updated:\n{sp.stdout}\n{sp.stderr}')
+        if self.mysha.startswith(self.remsha):
+            ctx.send(f'No update needed.')
+        else:
+            async with ctx.typing():
+                sp = subprocess.run(['git', 'pull', '--ff-only'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8')
+                await ctx.send(f'Updated:\n{sp.stdout}\n{sp.stderr}')
 
     @commands.command(name="remsha")
     async def show_remote_latest_sha(self, ctx):
@@ -67,5 +70,3 @@ def setup(bot):
     async def post_init(ctx):
         await the_cog.get_latest_sha(ctx)
     bot.add_command(post_init)
-
-    # TODO: Make sure we're up to date
