@@ -5,6 +5,7 @@ ghupdate.py
 Discord bot extension for grabbing GitHub updates; WIP.
 """
 
+import subprocess
 from discord.ext import commands
 from omegaconf import OmegaConf
 
@@ -15,7 +16,8 @@ class GitHubUpdate(commands.Cog):
         self.bot = bot
         self.hook = None
         self.hook_chan = None
-        self.sha = None
+        self.remsha = None
+        self.mysha= None
 
     @commands.command(name="findsha")
     async def get_latest_sha(self, ctx):
@@ -33,12 +35,26 @@ class GitHubUpdate(commands.Cog):
                 emb = msg.embeds[0]
                 # If on the right branch, grab the short SHA for this commit
                 if emb.title.startswith(f'[{conf.BRANCH}]'):
-                    self.sha = emb.description[1: emb.description.find(']')]
+                    self.remsha = emb.description[1: emb.description.find(']')]
                     break
 
-    @commands.command(name="sha")
-    async def show_latest_sha(self, ctx):
-        await ctx.send(f'Most recent commit: SHA = {self.sha}')
+        # Grab the short SHA for most recent local commit:
+        sp = subprocess.run(['git', 'show', '--pretty=format:"%h"', '--no-notes', '--no-patch'], stdout=subprocess.PIPE)
+        self.mysha = sp.stdout.decode('utf-8')[1:-2]
+
+    @commands.command(name="gupdate")
+    async def do_git_update(self, ctx):
+        if not self.remsha.startswith(self.mysha):
+            sp = subprocess.run(['git', 'pull'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            await ctx.send(f'Updated:\n{sp.stdout}\n{sp.stderr}')
+
+    @commands.command(name="remsha")
+    async def show_remote_latest_sha(self, ctx):
+        await ctx.send(f"Remote's most recent commit: SHA = {self.remsha}")
+
+    @commands.command(name="mysha")
+    async def show_my_latest_sha(self, ctx):
+        await ctx.send(f'My most recent commit: SHA = {self.mysha}')
 
 def setup(bot):
     the_cog = GitHubUpdate(bot)
