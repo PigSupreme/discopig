@@ -30,6 +30,7 @@ class GitHubUpdate(commands.Cog):
             async with self.hook_chan.typing():
                 sp = subprocess.run(['git', 'pull', '--ff-only'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8')
                 await self.hook_chan.send(f'Updated:\n{sp.stdout}\n{sp.stderr}')
+            # Todo: Reload the extension after successul update.
 
     @commands.command(name="findsha")
     @commands.is_owner()
