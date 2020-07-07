@@ -41,11 +41,12 @@ class GitHubUpdate(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, msg):
         if self.is_from_webhook(msg):
+            await self.do_git_update()
             # Todo: Check whether we need to update.
-            async with self.hook_chan.typing():
-                sp = subprocess.run(['git', 'pull', '--ff-only'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8')
-                await self.hook_chan.send(f'Updated:\n{sp.stdout}\n{sp.stderr}')
-            # Todo: Reload the extension after successul update.
+            # async with self.hook_chan.typing():
+            #     sp = subprocess.run(['git', 'pull', '--ff-only'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8')
+            #     await self.hook_chan.send(f'Updated:\n{sp.stdout}\n{sp.stderr}')
+            # # Todo: Reload the extension after successul update.
 
     @commands.command(name="findsha", help="Re-check for most recent remote/local commits.")
     @commands.is_owner()
@@ -70,9 +71,13 @@ class GitHubUpdate(commands.Cog):
 
     @commands.command(name="gupdate")
     @commands.is_owner()
-    async def do_git_update(self, ctx):
-        await ctx.invoke(self.get_latest_sha)
-        #await ctx.send(f'Checking {self.mysha} versus remote {self.remsha}...')
+    async def do_git_update(self, ctx=None):
+        if ctx:
+            await ctx.invoke(self.get_latest_sha)
+        else:
+            await self.get_latest_sha()
+            ctx = self.hook_chan
+            
         if self.mysha.startswith(self.remsha):
             await ctx.send(f'No update needed.')
         else:
