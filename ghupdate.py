@@ -101,5 +101,6 @@ class GitHubUpdate(commands.Cog):
 
 
 def setup(bot):
+    print('Yatta!')
     the_cog = GitHubUpdate(bot)
     bot.add_cog(the_cog)
