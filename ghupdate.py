@@ -32,6 +32,7 @@ class GitHubUpdate(commands.Cog):
                 await self.hook_chan.send(f'Updated:\n{sp.stdout}\n{sp.stderr}')
 
     @commands.command(name="findsha")
+    @commands.is_owner()
     async def get_latest_sha(self, ctx):
         # Use the webhook to find its channel
         guildhooks = await ctx.guild.webhooks()
@@ -56,6 +57,7 @@ class GitHubUpdate(commands.Cog):
         self.mysha = sp.stdout[1:-1]
 
     @commands.command(name="gupdate")
+    @commands.is_owner()
     async def do_git_update(self, ctx):
         await ctx.send(f'Checking {self.mysha} versus remote {self.remsha}...')
         if self.mysha.startswith(self.remsha):
@@ -65,13 +67,10 @@ class GitHubUpdate(commands.Cog):
                 sp = subprocess.run(['git', 'pull', '--ff-only'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8')
                 await ctx.send(f'Updated:\n{sp.stdout}\n{sp.stderr}')
 
-    @commands.command(name="remsha")
-    async def show_remote_latest_sha(self, ctx):
-        await ctx.send(f"Remote's most recent commit: SHA = {self.remsha}")
+    @commands.command(name="shasha", help="Show most recent remote/local commits.")
+    async def show_latest_shas(self, ctx):
+        await ctx.send(f'* Remote SHA: {self.remsha}\n* Bot SHA: {self.mysha}')
 
-    @commands.command(name="mysha")
-    async def show_my_latest_sha(self, ctx):
-        await ctx.send(f'My most recent commit: SHA = {self.mysha}')
 
 def setup(bot):
     the_cog = GitHubUpdate(bot)
