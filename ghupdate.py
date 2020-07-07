@@ -26,7 +26,7 @@ class GitHubUpdate(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, msg):
         if self.is_from_webhook(msg):
-            await self.hook_chan.send('Rawr webhook!')
+            # Todo: Check whether we need to update.
             async with self.hook_chan.typing():
                 sp = subprocess.run(['git', 'pull', '--ff-only'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8')
                 await self.hook_chan.send(f'Updated:\n{sp.stdout}\n{sp.stderr}')
