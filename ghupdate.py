@@ -19,6 +19,21 @@ class GitHubUpdate(commands.Cog):
         self.remsha = None
         self.mysha= None
 
+    # botcore will autorun this after loading
+    @commands.command()
+    async def post_init(self, ctx):
+        # Use the webhook to find its channel
+        guildhooks = await ctx.guild.webhooks()
+        for wh in guildhooks:
+            if wh.url == conf.HOOK_URL:
+                self.hook = wh
+                break
+        self.hook_chan = wh.channel
+        
+        # Immediately check for updates
+        await ctx.send('Auto-checking for repository updates...')
+        await ctx.invoke(self.do_git_update)
+
     def is_from_webhook(self, msg):
         # Todo: Return the embed to avoid duplicate code?
         return msg.webhook_id == self.hook.id and msg.author.name == 'GitHub'
@@ -32,21 +47,13 @@ class GitHubUpdate(commands.Cog):
                 await self.hook_chan.send(f'Updated:\n{sp.stdout}\n{sp.stderr}')
             # Todo: Reload the extension after successul update.
 
-    @commands.command(name="findsha")
+    @commands.command(name="findsha", help="Re-check for most recent remote/local commits.")
     @commands.is_owner()
-    async def get_latest_sha(self, ctx):
-        # Use the webhook to find its channel
-        guildhooks = await ctx.guild.webhooks()
-        for wh in guildhooks:
-            if wh.url == conf.HOOK_URL:
-                self.hook = wh
-                break
-        self.hook_chan = wh.channel
-
+    async def get_latest_sha(self, ctx=None):
         # Find the last message posted by the webhook from GitHub
         async for msg in self.hook_chan.history():
             if self.is_from_webhook(msg):
-                emb = msg.embeds[0]
+                emb = msg.embeds[0] # There should be only one!
                 # If on the right branch, grab the short SHA for this commit
                 if emb.title.startswith(f'[{conf.BRANCH}]'):
                     remsha = emb.description[1: emb.description.find(']')]
@@ -56,17 +63,26 @@ class GitHubUpdate(commands.Cog):
         # Grab the SHA for most recent local commit (strip enclosing quotes)
         sp = subprocess.run(['git', 'show', '--pretty=format:"%H"', '--no-notes', '--no-patch'], stdout=subprocess.PIPE, encoding='utf-8')
         self.mysha = sp.stdout[1:-1]
+        
+        # If invoked as a command, report the results
+        if ctx:
+            await ctx.invoke(self.show_latest_shas)
 
     @commands.command(name="gupdate")
     @commands.is_owner()
     async def do_git_update(self, ctx):
-        await ctx.send(f'Checking {self.mysha} versus remote {self.remsha}...')
+        await ctx.invoke(self.get_latest_sha)
+        #await ctx.send(f'Checking {self.mysha} versus remote {self.remsha}...')
         if self.mysha.startswith(self.remsha):
             await ctx.send(f'No update needed.')
         else:
             async with ctx.typing():
                 sp = subprocess.run(['git', 'pull', '--ff-only'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8')
-                await ctx.send(f'Updated:\n{sp.stdout}\n{sp.stderr}')
+                if sp.returncode:   # git pull returned an error
+                    await ctx.send(f'* Update failed:\n{sp.stdout}\n{sp.stderr}')
+                else:
+                    await ctx.send(f'* Update succeeded:\n {sp.stdout}')
+                    self.bot.reload_extension(self)
 
     @commands.command(name="shasha", help="Show most recent remote/local commits.")
     async def show_latest_shas(self, ctx):
@@ -76,9 +92,3 @@ class GitHubUpdate(commands.Cog):
 def setup(bot):
     the_cog = GitHubUpdate(bot)
     bot.add_cog(the_cog)
-
-    # botcore will autorun this after loading
-    @commands.command()
-    async def post_init(ctx):
-        await the_cog.get_latest_sha(ctx)
-    bot.add_command(post_init)
