@@ -21,7 +21,7 @@ class GitHubUpdate(commands.Cog):
 
     # botcore will autorun this after loading
     @commands.command()
-    async def post_init(self, ctx):
+    async def post_init(self, ctx=None):
         # Use the webhook to find its channel
         guildhooks = await ctx.guild.webhooks()
         for wh in guildhooks:
@@ -30,9 +30,13 @@ class GitHubUpdate(commands.Cog):
                 break
         self.hook_chan = wh.channel
 
-        # Immediately check for updates
-        await ctx.send('Auto-checking for repository updates...')
-        await ctx.invoke(self.do_git_update)
+        # If ctx is none, we just reloaded after a git pull...
+        # ...otherwise, this is the initial load, so check for updates.
+        if ctx:
+            await ctx.send('Auto-checking for repository updates...')
+            await ctx.invoke(self.do_git_update)
+        else:
+            await self.hook_chan.send('Dynamic reload successful!')
 
     def is_from_webhook(self, msg):
         return msg.webhook_id == self.hook.id and msg.author.name == 'GitHub'
