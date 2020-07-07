@@ -34,6 +34,7 @@ class GitHubUpdate(commands.Cog):
                 # If on the right branch, grab the short SHA for this commit
                 if emb.title.startswith(f'[{conf.BRANCH}]'):
                     self.sha = emb.description[1: emb.description.find(']')]
+                    break
 
     @commands.command(name="sha")
     async def show_latest_sha(self, ctx):
