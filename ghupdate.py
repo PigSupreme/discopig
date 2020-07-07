@@ -47,8 +47,7 @@ class GitHubUpdate(commands.Cog):
         ### Ignore anything outside of the webhook channel
         if self.hook_chan and msg.channel != self.hook_chan:
             return
-        try:
-            return msg.webhook_id and msg.webhook_id == self.hook.id and msg.author.name == 'GitHub'
+        return msg.webhook_id and msg.webhook_id == self.hook.id and msg.author.name == 'GitHub'
 
     @commands.Cog.listener()
     async def on_message(self, msg):
@@ -102,6 +101,5 @@ class GitHubUpdate(commands.Cog):
 
 
 def setup(bot):
-    print('loading...')
     the_cog = GitHubUpdate(bot)
     bot.add_cog(the_cog)
