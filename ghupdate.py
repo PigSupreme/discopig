@@ -78,10 +78,8 @@ class GitHubUpdate(commands.Cog):
     @commands.is_owner()
     async def do_git_update(self, ctx=None):
         if ctx:
-            await ctx.send('Running w/ context.')
             await ctx.invoke(self.get_latest_sha)
         else:
-            print('Running w/out context.')
             await self.get_latest_sha(None)
             ctx = self.hook_chan
 
