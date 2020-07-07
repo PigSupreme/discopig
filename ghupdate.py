@@ -40,6 +40,9 @@ class GitHubUpdate(commands.Cog):
             self.bot.remove.command('post_init')
 
     def is_from_webhook(self, msg):
+        ### Ignore anything outside of the webhook channel
+        if self.hook_chan and msg.channel != self.hook_chan:
+            return
         try:
             return msg.webhook_id == self.hook.id and msg.author.name == 'GitHub'
         except AttributeError:
