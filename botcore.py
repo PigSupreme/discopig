@@ -52,7 +52,7 @@ async def on_ready():
     else:
         bot.lobby = lobby
         ready_msg += f'\nUsing existing lobby {bot.lobby}.'
-    lobby_msg = await bot.lobby.send(f'{bot.user} is now lurking in the #{bot.lobby}:')
+    lobby_msg = await bot.lobby.send(f'{bot.user} is now lurking in the #{bot.lobby}.')
     ready_msg += f'\n{lobby_msg.jump_url}'
 
     # Find our owner and send dm the ready_msg
@@ -69,6 +69,13 @@ async def do_load_extension(ctx, extension: str):
     except commands.ExtensionAlreadyLoaded:
         bot.reload_extension(extension)
         msg_text = f'Reloaded extension: {extension}'
+    # Extension setup() cannot be a coroutine; we use this trickery
+    #  to excute anything requiring async:
+    cmd = bot.get_command('post_init')
+    if cmd:
+        await ctx.invoke(cmd)
+        bot.remove_command('post_init')
+
     await send_dm(ctx.author, msg_text)
 
 @bot.command(name='unload_ext')
