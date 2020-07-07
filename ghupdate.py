@@ -35,18 +35,12 @@ class GitHubUpdate(commands.Cog):
         await ctx.invoke(self.do_git_update)
 
     def is_from_webhook(self, msg):
-        # Todo: Return the embed to avoid duplicate code?
         return msg.webhook_id == self.hook.id and msg.author.name == 'GitHub'
 
     @commands.Cog.listener()
     async def on_message(self, msg):
         if self.is_from_webhook(msg):
             await self.do_git_update()
-            # Todo: Check whether we need to update.
-            # async with self.hook_chan.typing():
-            #     sp = subprocess.run(['git', 'pull', '--ff-only'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8')
-            #     await self.hook_chan.send(f'Updated:\n{sp.stdout}\n{sp.stderr}')
-            # # Todo: Reload the extension after successul update.
 
     @commands.command(name="findsha", help="Re-check for most recent remote/local commits.")
     @commands.is_owner()
