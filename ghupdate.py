@@ -35,18 +35,19 @@ class GitHubUpdate(commands.Cog):
                 emb = msg.embeds[0]
                 # If on the right branch, grab the short SHA for this commit
                 if emb.title.startswith(f'[{conf.BRANCH}]'):
-                    self.remsha = emb.description[1: emb.description.find(']')]
+                    remsha = emb.description[1: emb.description.find(']')]
+                    self.remsha = remsha[1:-1]
                     break
 
-        # Grab the short SHA for most recent local commit:
-        sp = subprocess.run(['git', 'show', '--pretty=format:"%h"', '--no-notes', '--no-patch'], stdout=subprocess.PIPE)
+        # Grab the SHA for most recent local commit:
+        sp = subprocess.run(['git', 'show', '--pretty=format:"%H"', '--no-notes', '--no-patch'], stdout=subprocess.PIPE)
         self.mysha = sp.stdout.decode('utf-8')[1:-2]
 
     @commands.command(name="gupdate")
     async def do_git_update(self, ctx):
         await ctx.send(f'Checking {self.mysha} versus remote {self.remsha}...')
-        if not self.remsha.startswith(self.mysha):
-            sp = subprocess.run(['git', 'pull'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if not self.mysha.startswith(self.remsha):
+            sp = subprocess.run(['git', 'pull', '--ff-only'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             await ctx.send(f'Updated:\n{sp.stdout}\n{sp.stderr}')
 
     @commands.command(name="remsha")
