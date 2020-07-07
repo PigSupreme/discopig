@@ -43,7 +43,7 @@ class GitHubUpdate(commands.Cog):
         try:
             return msg.webhook_id == self.hook.id and msg.author.name == 'GitHub'
         except AttributeError:
-            print(f'** MESSAGE **\n{msg.content})
+            print(f'** MESSAGE **\n{msg.content}')
             
     @commands.Cog.listener()
     async def on_message(self, msg):
