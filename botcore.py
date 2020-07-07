@@ -73,10 +73,13 @@ async def do_load_extension(ctx, extension: str):
     #  to excute anything requiring async:
     cmd = bot.get_command('post_init')
     if cmd:
-        await ctx.invoke(cmd)
+        if ctx:
+            await ctx.invoke(cmd)
+            await send_dm(ctx.author, msg_text)
+        # Dynamic reload doesn't provide a context, so...
+        else:
+            await cmd.__call__()
         bot.remove_command('post_init')
-
-    await send_dm(ctx.author, msg_text)
 
 @bot.command(name='unload_ext')
 @commands.is_owner()

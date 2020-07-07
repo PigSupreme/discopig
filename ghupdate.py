@@ -23,7 +23,11 @@ class GitHubUpdate(commands.Cog):
     @commands.command()
     async def post_init(self, ctx=None):
         # Use the webhook to find its channel
-        guildhooks = await ctx.guild.webhooks()
+        if ctx:
+            guildhooks = await ctx.guild.webhooks()
+        else:
+            guildhooks = await self.bot.the_guild.webhooks()
+
         for wh in guildhooks:
             if wh.url == conf.HOOK_URL:
                 self.hook = wh
@@ -37,21 +41,21 @@ class GitHubUpdate(commands.Cog):
             await ctx.invoke(self.do_git_update)
         else:
             await self.hook_chan.send('Dynamic reload successful!')
-            self.bot.remove.command('post_init')
+            self.bot.remove_command('post_init')
 
     def is_from_webhook(self, msg):
         ### Ignore anything outside of the webhook channel
         if self.hook_chan and msg.channel != self.hook_chan:
             return
         try:
-            return msg.webhook_id == self.hook.id and msg.author.name == 'GitHub'
+            return msg.webhook_id and msg.webhook_id == self.hook.id and msg.author.name == 'GitHub'
         except AttributeError:
             print(f'** MESSAGE **\n{msg.content}')
-            
+
     @commands.Cog.listener()
     async def on_message(self, msg):
         if self.is_from_webhook(msg):
-            await self.do_git_update()
+            await self.do_git_update(None)
 
     @commands.command(name="findsha", help="Re-check for most recent remote/local commits.")
     @commands.is_owner()
@@ -92,7 +96,7 @@ class GitHubUpdate(commands.Cog):
                     await ctx.send(f'* Update failed:\n{sp.stdout}\n{sp.stderr}')
                 else:
                     await ctx.send(f'* Update succeeded:\n {sp.stdout}')
-                    await ctx.invoke(self.bot.get_command('load_ext'), 'ghupdate')
+                    await self.bot.get_command('load_ext').__call__(None, 'ghupdate')
 
     @commands.command(name="shasha", help="Show most recent remote/local commits.")
     async def show_latest_shas(self, ctx):
