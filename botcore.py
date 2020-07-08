@@ -16,8 +16,9 @@ GUILD = conf.DISCORD_GUILD
 TOKEN = conf.DISCORD_TOKEN
 CATEGORY = conf.CATEGORY
 LOBBY = conf.LOBBY
+PREFIX = conf.CMD_PREFIX
 
-bot = commands.Bot(command_prefix='!')
+bot = commands.Bot(command_prefix=PREFIX)
 
 async def send_dm(user, txt):
     channel = user.dm_channel
