@@ -90,7 +90,7 @@ async def do_unload_extension(ctx, extension: str):
         msg_text = f'Unloaded extension {extension}'
     except commands.ExtensionNotLoaded:
         msg_text = f'No extension {extension} to unload.'
-    send_dm(ctx.author, msg_text)
+    await send_dm(ctx.author, msg_text)
 
 @bot.command(name='shutdown', help="(Admin only) Get to the chopper!")
 @commands.has_role('admin')

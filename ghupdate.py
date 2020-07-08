@@ -18,15 +18,14 @@ class GitHubUpdate(commands.Cog):
         self.hook_chan = None
         self.remsha = None
         self.mysha = None
-        self.branch_tag = f'[{conf.GH_REPO}:{branch}]' 
-        print(self.branch_tag)
+        self.branch_tag = f'[{conf.GH_REPO}:{branch}]'
 
     # botcore will autorun this after loading
     @commands.command(help="Pay no attention to the man behind the curtain.")
     async def post_init(self, ctx=None):
         """Do async things on startup/reload."""
         # Use the webhook to find its channel; store for later use.
-        # Can't do this in setup/__init__ since Guild.webhooks() is a coro. 
+        # Can't do this in setup/__init__ since Guild.webhooks() is a coro.
         if ctx:
             guildhooks = await ctx.guild.webhooks()
         else:
@@ -36,15 +35,19 @@ class GitHubUpdate(commands.Cog):
                 self.hook = wh
                 break
         self.hook_chan = wh.channel
-        print(self.hook_chan)
 
         # If ctx is none, we just reloaded after a git pull...
         # ...otherwise, this is the initial load, so check for updates.
         if ctx:
-            await ctx.send('Auto-checking for repository updates...')
-            await ctx.invoke(self.do_git_update)
+            await ctx.send(f'Auto-checking for repository updates on {self.branch_tag}...')
+            await ctx.invoke(self.get_latest_sha)
+            if self.mysha.startswith(self.remsha):
+                await ctx.send('...no update neeed.')
+            else:
+                await self.do_git_update()
         else:
-            pass
+            print('Dynamic reload?')
+            # TODO: Fix it!
             #await self.hook_chan.send('Dynamic reload successful!')
 
     def is_from_webhook(self, msg):
@@ -55,24 +58,30 @@ class GitHubUpdate(commands.Cog):
             return msg.author.name == 'GitHub'
 
     async def last_hook_commit_msg_embed(self):
-        # Find the last message posted by the webhook from GitHub
+        # Find the last message posted by the webhook from GitHub...
+        # ...but make sure it matches our current branch.
         async for msg in self.hook_chan.history():
             if self.is_from_webhook(msg):
                 emb = msg.embeds[0] # There should be only one!
                 if emb.title.startswith(self.branch_tag):
-                    return msg, emb
+                    return emb
 
     @commands.Cog.listener()
     async def on_message(self, msg):
         """Listen for GitHub webhooks events and check for updates."""
         if self.is_from_webhook(msg):
-            await self.do_git_update(None)
+            await self.get_latest_sha(None)
+            if self.mysha.startswith(self.remsha):
+                await msg.channel.send(f'No update needed.')
+            else:
+                await msg.channel.send(f'Attempting update to {self.remsha}...')
+                await self.do_git_update()
 
     @commands.command(name="findsha")
     @commands.is_owner()
     async def get_latest_sha(self, ctx=None):
         """Re-check for the most recent remote/local commits."""
-        msg, emb = await self.last_hook_commit_msg_embed()
+        emb = await self.last_hook_commit_msg_embed()
         remsha = emb.description[1: emb.description.find(']')]
         self.remsha = remsha[1:-1]
 
@@ -82,29 +91,27 @@ class GitHubUpdate(commands.Cog):
 
         # If invoked as a command, report the results
         if ctx:
-            await ctx.send(msg.jump_url)
             await ctx.invoke(self.show_latest_shas)
 
-    @commands.command(name="gupdate")
+    @commands.command(name="gupdate", help="Manual update (TODO: just use git pull?)")
     @commands.is_owner()
-    async def do_git_update(self, ctx=None):
-        """Check for updates; pull and reload if needed."""
-        if ctx:
-            await ctx.invoke(self.get_latest_sha)
-        else:
-            await self.get_latest_sha(None)
-            ctx = self.hook_chan
-
+    async def check_for_updates(self, ctx):
+        # TODO: Use git pull here instead?
+        await ctx.send(f'Manually checking for updates on {self.branch_tag}...')
+        await ctx.invoke(self.get_latest_sha)
         if self.mysha.startswith(self.remsha):
-            await ctx.send(f'No update needed.')
+            await ctx.send('...no update neeed.')
         else:
-            async with ctx.typing():
-                sp = subprocess.run(['git', 'pull', '--ff-only'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8')
-                if sp.returncode:   # Meaning git pull returned an error
-                    await ctx.send(f'* Update failed:\n{sp.stdout}\n{sp.stderr}')
-                else:
-                    await ctx.send(f'* Update succeeded:\n {sp.stdout}')
-                    await self.bot.get_command('load_ext').__call__(None, 'ghupdate')
+            await self.do_git_update()
+
+    async def do_git_update(self):
+        """Do a git pull and reload the cog if needed."""
+        sp = subprocess.run(['git', 'pull', '--ff-only'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8')
+        if sp.returncode:   # Meaning git pull returned an error
+            raise RuntimeError(f'Git pull failed:\n{sp.stdout}\n{sp.stderr}')
+        # TODO: Determine what actually needs to be reloaded.
+        # For now, just reload this cog.
+        await self.bot.get_command('load_ext').__call__(None, 'ghupdate')
 
     @commands.command(name="shasha", help="Show most recent remote/local commits.")
     async def show_latest_shas(self, ctx):
