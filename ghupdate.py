@@ -12,18 +12,21 @@ from omegaconf import OmegaConf
 conf = OmegaConf.load('config.yaml').ghupdate
 
 class GitHubUpdate(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot, branch=None):
         self.bot = bot
         self.hook = None
         self.hook_chan = None
         self.remsha = None
-        self.mysha= None
+        self.mysha = None
+        self.branch_tag = f'[{conf.GH_REPO}:{branch}]' 
+        print(self.branch_tag)
 
     # botcore will autorun this after loading
     @commands.command(help="Pay no attention to the man behind the curtain.")
     async def post_init(self, ctx=None):
-        """Do asynch things on startup/reload."""
+        """Do async things on startup/reload."""
         # Use the webhook to find its channel; store for later use.
+        # Can't do this in setup/__init__ since Guild.webhooks() is a coro. 
         if ctx:
             guildhooks = await ctx.guild.webhooks()
         else:
@@ -33,6 +36,7 @@ class GitHubUpdate(commands.Cog):
                 self.hook = wh
                 break
         self.hook_chan = wh.channel
+        print(self.hook_chan)
 
         # If ctx is none, we just reloaded after a git pull...
         # ...otherwise, this is the initial load, so check for updates.
@@ -40,9 +44,8 @@ class GitHubUpdate(commands.Cog):
             await ctx.send('Auto-checking for repository updates...')
             await ctx.invoke(self.do_git_update)
         else:
-            await self.hook_chan.send('Dynamic reload successful!')
-            # Todo: Is this really needed? Check botcore.py reload code.
-            self.bot.remove_command('post_init')
+            pass
+            #await self.hook_chan.send('Dynamic reload successful!')
 
     def is_from_webhook(self, msg):
         """Used internally to ignore anything except GitHub webhook updates."""
@@ -50,6 +53,14 @@ class GitHubUpdate(commands.Cog):
             return
         if msg.webhook_id and msg.webhook_id == self.hook.id:
             return msg.author.name == 'GitHub'
+
+    async def last_hook_commit_msg_embed(self):
+        # Find the last message posted by the webhook from GitHub
+        async for msg in self.hook_chan.history():
+            if self.is_from_webhook(msg):
+                emb = msg.embeds[0] # There should be only one!
+                if emb.title.startswith(self.branch_tag):
+                    return msg, emb
 
     @commands.Cog.listener()
     async def on_message(self, msg):
@@ -61,15 +72,9 @@ class GitHubUpdate(commands.Cog):
     @commands.is_owner()
     async def get_latest_sha(self, ctx=None):
         """Re-check for the most recent remote/local commits."""
-        # Find the last message posted by the webhook from GitHub
-        async for msg in self.hook_chan.history():
-            if self.is_from_webhook(msg):
-                emb = msg.embeds[0] # There should be only one!
-                # If on the right branch, grab the short SHA for this commit
-                if emb.title.startswith(f'[{conf.BRANCH}]'):
-                    remsha = emb.description[1: emb.description.find(']')]
-                    self.remsha = remsha[1:-1]
-                    break
+        msg, emb = await self.last_hook_commit_msg_embed()
+        remsha = emb.description[1: emb.description.find(']')]
+        self.remsha = remsha[1:-1]
 
         # Grab the SHA for most recent local commit (strip enclosing quotes)
         sp = subprocess.run(['git', 'show', '--pretty=format:"%H"', '--no-notes', '--no-patch'], stdout=subprocess.PIPE, encoding='utf-8')
@@ -77,6 +82,7 @@ class GitHubUpdate(commands.Cog):
 
         # If invoked as a command, report the results
         if ctx:
+            await ctx.send(msg.jump_url)
             await ctx.invoke(self.show_latest_shas)
 
     @commands.command(name="gupdate")
@@ -106,5 +112,8 @@ class GitHubUpdate(commands.Cog):
 
 
 def setup(bot):
-    the_cog = GitHubUpdate(bot)
+    sp = subprocess.run(['git', 'branch', '--show-current'], stdout=subprocess.PIPE, encoding='utf-8')
+    if sp.returncode:
+        raise RuntimeError('Cannot get local git branch.')
+    the_cog = GitHubUpdate(bot, sp.stdout.rstrip())
     bot.add_cog(the_cog)
