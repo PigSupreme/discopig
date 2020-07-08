@@ -20,14 +20,14 @@ class GitHubUpdate(commands.Cog):
         self.mysha= None
 
     # botcore will autorun this after loading
-    @commands.command()
+    @commands.command(help="Pay no attention to the man behind the curtain.")
     async def post_init(self, ctx=None):
-        # Use the webhook to find its channel
+        """Do asynch things on startup/reload."""
+        # Use the webhook to find its channel; store for later use.
         if ctx:
             guildhooks = await ctx.guild.webhooks()
         else:
             guildhooks = await self.bot.the_guild.webhooks()
-
         for wh in guildhooks:
             if wh.url == conf.HOOK_URL:
                 self.hook = wh
@@ -41,22 +41,26 @@ class GitHubUpdate(commands.Cog):
             await ctx.invoke(self.do_git_update)
         else:
             await self.hook_chan.send('Dynamic reload successful!')
+            # Todo: Is this really needed? Check botcore.py reload code.
             self.bot.remove_command('post_init')
 
     def is_from_webhook(self, msg):
-        ### Ignore anything outside of the webhook channel
+        """Used internally to ignore anything except GitHub webhook updates."""
         if self.hook_chan and msg.channel != self.hook_chan:
             return
-        return msg.webhook_id and msg.webhook_id == self.hook.id and msg.author.name == 'GitHub'
+        if msg.webhook_id and msg.webhook_id == self.hook.id:
+            return msg.author.name == 'GitHub'
 
     @commands.Cog.listener()
     async def on_message(self, msg):
+        """Listen for GitHub webhooks events and check for updates."""
         if self.is_from_webhook(msg):
             await self.do_git_update(None)
 
-    @commands.command(name="findsha", help="Re-check for most recent remote/local commits.")
+    @commands.command(name="findsha")
     @commands.is_owner()
     async def get_latest_sha(self, ctx=None):
+        """Re-check for the most recent remote/local commits."""
         # Find the last message posted by the webhook from GitHub
         async for msg in self.hook_chan.history():
             if self.is_from_webhook(msg):
@@ -75,9 +79,10 @@ class GitHubUpdate(commands.Cog):
         if ctx:
             await ctx.invoke(self.show_latest_shas)
 
-    @commands.command(name="gupdate", help="Manually check for updates.")
+    @commands.command(name="gupdate")
     @commands.is_owner()
     async def do_git_update(self, ctx=None):
+        """Check for updates; pull and reload if needed."""
         if ctx:
             await ctx.invoke(self.get_latest_sha)
         else:
@@ -89,7 +94,7 @@ class GitHubUpdate(commands.Cog):
         else:
             async with ctx.typing():
                 sp = subprocess.run(['git', 'pull', '--ff-only'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8')
-                if sp.returncode:   # git pull returned an error
+                if sp.returncode:   # Meaning git pull returned an error
                     await ctx.send(f'* Update failed:\n{sp.stdout}\n{sp.stderr}')
                 else:
                     await ctx.send(f'* Update succeeded:\n {sp.stdout}')
@@ -101,6 +106,5 @@ class GitHubUpdate(commands.Cog):
 
 
 def setup(bot):
-    print('Yatta!')
     the_cog = GitHubUpdate(bot)
     bot.add_cog(the_cog)
