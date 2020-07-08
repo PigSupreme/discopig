@@ -47,8 +47,7 @@ class GitHubUpdate(commands.Cog):
                 await self.do_git_update()
         else:
             print('Dynamic reload?')
-            # TODO: Fix it!
-            #await self.hook_chan.send('Dynamic reload successful!')
+            await self.hook_chan.send('Dynamic reload successful!')
 
     def is_from_webhook(self, msg):
         """Used internally to ignore anything except GitHub webhook updates."""
