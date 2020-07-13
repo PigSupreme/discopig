@@ -6,48 +6,59 @@ Discord bot extension for grabbing GitHub updates; WIP.
 """
 
 import subprocess
+import discord.utils
 from discord.ext import commands
 from omegaconf import OmegaConf
 
-conf = OmegaConf.load('config.yaml').ghupdate
+GIT_NOPULL = 'Already up to date.'
 
-class GitHubUpdate(commands.Cog):
-    def __init__(self, bot, branch=None):
+class GitHubUpdate(commands.Cog, name ='ghupdate'):
+    def __init__(self, bot, config):
+        super().__init__()
+        # The bot running this cog
         self.bot = bot
+        # Information about the Discord webhook:
+        self.HOOK_GUILDNAME = config.HOOK_GUILDNAME
+        self.HOOK_URL = config.HOOK_URL
         self.hook = None
         self.hook_chan = None
+        # Remote and local commit SHAs
         self.remsha = None
         self.mysha = None
-        self.branch_tag = f'[{conf.GH_REPO}:{branch}]'
+        # GitHub Repo and branch information:
+        self.branch_tag = f'[{config.GH_REPO}:{config.BRANCH}]'
 
-    # botcore will autorun this after loading
-    @commands.command(help="Pay no attention to the man behind the curtain.")
     async def post_init(self, ctx=None):
-        """Do async things on startup/reload."""
+        """Do async things after extension setup."""
         # Use the webhook to find its channel; store for later use.
-        # Can't do this in setup/__init__ since Guild.webhooks() is a coro.
-        if ctx:
-            guildhooks = await ctx.guild.webhooks()
-        else:
-            guildhooks = await self.bot.the_guild.webhooks()
-        for wh in guildhooks:
-            if wh.url == conf.HOOK_URL:
-                self.hook = wh
-                break
-        self.hook_chan = wh.channel
+        self.guild = discord.utils.find(lambda g: g.name == self.HOOK_GUILDNAME, self.bot.guilds)
+        guildhooks = await self.guild.webhooks()
+        self.hook = discord.utils.find(lambda h: h.url == self.HOOK_URL, guildhooks)
+        self.hook_chan = self.hook.channel
 
-        # If ctx is none, we just reloaded after a git pull...
-        # ...otherwise, this is the initial load, so check for updates.
-        if ctx:
-            await ctx.send(f'Auto-checking for repository updates on {self.branch_tag}...')
-            await ctx.invoke(self.get_latest_sha)
-            if self.mysha.startswith(self.remsha):
-                await ctx.send('...no update neeed.')
-            else:
-                await self.do_git_update()
+        # Check for updates and reload if needed.
+        msg_chan = self.bot.lobby  # TODO: Change to self.hook_chan
+        await msg_chan.send(f'Auto-checking for repository updates on {self.branch_tag}...')
+        await self.get_latest_sha()
+        if self.mysha.startswith(self.remsha):
+            await msg_chan.send('...no update neeed.')
         else:
-            print('Dynamic reload?')
-            await self.hook_chan.send('Dynamic reload successful!')
+            await msg_chan.send(' ...attemping automatic update...')
+            update_msg = await self.do_git_update()
+            if update_msg:
+                await msg_chan.send(update_msg)
+
+    async def do_git_update(self):
+        """Do a git pull and reload any updates."""
+        sp = subprocess.run(['git', 'pull', '--ff-only'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8')
+        if sp.returncode:   # Meaning git pull returned an error
+            raise RuntimeError(f'Git pull failed:\n{sp.stdout}\n{sp.stderr}')
+        else:
+            if sp.stdout.strip() == GIT_NOPULL:
+                return ' ...local repo is ahead of remote?'
+            else:
+                return sp.stdout
+                # TODO: Determine if other extensions need to be reloaded.
 
     def is_from_webhook(self, msg):
         """Used internally to ignore anything except GitHub webhook updates."""
@@ -103,23 +114,12 @@ class GitHubUpdate(commands.Cog):
         else:
             await self.do_git_update()
 
-    async def do_git_update(self):
-        """Do a git pull and reload the cog if needed."""
-        sp = subprocess.run(['git', 'pull', '--ff-only'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8')
-        if sp.returncode:   # Meaning git pull returned an error
-            raise RuntimeError(f'Git pull failed:\n{sp.stdout}\n{sp.stderr}')
-        # TODO: Determine what actually needs to be reloaded.
-        # For now, just reload this cog.
-        await self.bot.get_command('load_ext').__call__(None, 'ghupdate')
-
     @commands.command(name="shasha", help="Show most recent remote/local commits.")
     async def show_latest_shas(self, ctx):
-        await ctx.send(f'* Remote SHA: {self.remsha}\n* Bot SHA: {self.mysha}')
+        await ctx.send(f'* Remote SHA: {self.remsha}\n* Bot SHA: {self.mysha[:7]}')
 
 
 def setup(bot):
-    sp = subprocess.run(['git', 'branch', '--show-current'], stdout=subprocess.PIPE, encoding='utf-8')
-    if sp.returncode:
-        raise RuntimeError('Cannot get local git branch.')
-    the_cog = GitHubUpdate(bot, sp.stdout.rstrip())
+    CONFIG = OmegaConf.load('config.yaml').ghupdate
+    the_cog = GitHubUpdate(bot, CONFIG)
     bot.add_cog(the_cog)
