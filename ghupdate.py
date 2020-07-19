@@ -52,7 +52,8 @@ class GitHubUpdate(commands.Cog, name ='ghupdate'):
         """Do a git pull and reload any updates."""
         sp = subprocess.run(['git', 'pull', '--ff-only'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8')
         if sp.returncode:   # Meaning git pull returned an error
-            raise RuntimeError(f'Git pull failed:\n{sp.stdout}\n{sp.stderr}')
+            logging.error(f'Git pull failed:\n{sp.stdout}\n{sp.stderr}')
+            return f'...git pull failed [{sp.returncode}], see log for details.'
         else:
             if sp.stdout.strip() == GIT_NOPULL:
                 return ' ...local repo is ahead of remote?'
@@ -85,7 +86,8 @@ class GitHubUpdate(commands.Cog, name ='ghupdate'):
                 await msg.channel.send(f'No update needed.')
             else:
                 await msg.channel.send(f'Attempting update to {self.remsha}...')
-                await self.do_git_update()
+                update_msg = await self.do_git_update()
+                await msg.channel.send(update_msg)
 
     @commands.command(name="findsha")
     @commands.is_owner()
@@ -112,7 +114,8 @@ class GitHubUpdate(commands.Cog, name ='ghupdate'):
         if self.mysha.startswith(self.remsha):
             await ctx.send('...no update neeed.')
         else:
-            await self.do_git_update()
+            update_msg = await self.do_git_update()
+            await ctx.send(update.msg)
 
     @commands.command(name="shasha", help="Show most recent remote/local commits.")
     async def show_latest_shas(self, ctx):
